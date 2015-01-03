@@ -1,26 +1,31 @@
+#include <stdint.h>
+
 #include <sys/mman.h>	// mmap
 #include <fcntl.h>	// open
 #include <stdlib.h>	// exit
-
-#include <stdint.h>
-
-#include <string.h>
+#include <unistd.h>	// ftruncate
+#include <string.h>	// memcpy
 
 #include <stdio.h>
 
-void *prepareMMAP(const char *filename, size_t sizetomap){
+void *prepareMMAP(const char *filename, size_t sizetomap, int *fd){
+	*fd = open(filename, O_RDWR);
 
-	int fd = open(filename, O_RDWR);
-
-	if (fd < 0){
+	if (*fd < 0){
 		printf("Can not open()...\n");
 		exit(1);
 	}
 
-	void *mem = mmap(NULL, sizetomap, PROT_WRITE, MAP_SHARED, fd, /* offset */ 0);
+	void *mem = mmap(NULL, sizetomap, PROT_WRITE, MAP_SHARED, *fd, /* offset */ 0);
 
 	if (mem == MAP_FAILED){
 		printf("Can not mmap()...\n");
+		exit(1);
+	}
+
+	// OK this is wrong...
+	if (ftruncate(*fd, 1024 * 4)){
+		printf("Can not ftruncate()...\n");
 		exit(1);
 	}
 
@@ -28,8 +33,10 @@ void *prepareMMAP(const char *filename, size_t sizetomap){
 }
 
 int main(const int argc, const char **argv){
+	// must be significantly lower for 32 bit OS
 	const size_t sizetomap = (size_t) 1024 * 1024 * 1024 * 8;
-	char *mem = prepareMMAP("file.bin", sizetomap);
+	int fd;
+	char *mem = prepareMMAP("file.bin", sizetomap, & fd);
 
 	const char **str;
 	unsigned int len;
@@ -73,7 +80,7 @@ int main(const int argc, const char **argv){
 	mem[ppos + 2] = 0xBE;
 	mem[ppos + 3] = 0xEF;
 
-
+	ftruncate(fd, ppos + 4);
 
 	munmap(mem, sizetomap);
 
