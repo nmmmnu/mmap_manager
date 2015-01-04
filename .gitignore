@@ -1,0 +1,10 @@
+*.o
+
+test_mm
+
+file.bin
+a.out
+
+_ot/
+
+
